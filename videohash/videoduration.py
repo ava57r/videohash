@@ -7,7 +7,11 @@ from typing import Optional
 # The length is found by the FFmpeg, the output of video_duration is in seconds.
 
 
-def video_duration(video_path: str, ffmpeg_path: Optional[str] = None) -> float:
+def video_duration(
+        video_path: str,
+        ffmpeg_path: Optional[str] = None,
+        ffmpeg_threads: Optional[int] = None,
+        ) -> float:
     """
     Retrieve the exact video duration as echoed by the FFmpeg and return
     the duration in seconds. Maximum duration supported is 999 hours, above
@@ -17,6 +21,8 @@ def video_duration(video_path: str, ffmpeg_path: Optional[str] = None) -> float:
 
     :param ffmpeg_path: Path of the FFmpeg software if not in path.
 
+    :param ffmpeg_threads: Threads of the FFmpeg software.
+
     :return: Video length(duration) in seconds.
 
     :rtype: float
@@ -25,7 +31,10 @@ def video_duration(video_path: str, ffmpeg_path: Optional[str] = None) -> float:
     if not ffmpeg_path:
         ffmpeg_path = str(which("ffmpeg"))
 
-    command = f'"{ffmpeg_path}" -i "{video_path}"'
+    if ffmpeg_threads:
+        command = f'"{ffmpeg_path}" -i "{video_path}" -threads {ffmpeg_threads}'
+    else:
+        command = f'"{ffmpeg_path}" -i "{video_path}"'
     process = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
     output, error = process.communicate()
 

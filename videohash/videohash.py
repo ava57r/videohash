@@ -38,6 +38,8 @@ class VideoHash:
         storage_path: Optional[str] = None,
         download_worst: bool = False,
         frame_interval: Union[int, float] = 1,
+        ffmpeg_threads: Optional[int] = None,
+        video_bytes: Optional[List] = None,
     ) -> None:
         """
         :param path: Absolute path of the input video file.
@@ -61,6 +63,9 @@ class VideoHash:
                                Smaller frame_interval implies fewer frames and
                                vice-versa.
 
+        :param ffmpeg_threads: Threads of the FFmpeg software.
+
+        param: video_bytes: video in binary.
 
         :return: None
 
@@ -76,14 +81,22 @@ class VideoHash:
         self._storage_path = self.storage_path
         self.download_worst = download_worst
         self.frame_interval = frame_interval
+        self.ffmpeg_threads = ffmpeg_threads
 
         self.task_uid = VideoHash._get_task_uid()
 
-        self._create_required_dirs_and_check_for_errors()
+        has_video_bytes = False
+        if video_bytes:
+            has_video_bytes = True
+            
+        self._create_required_dirs_and_check_for_errors(has_video_bytes)
 
-        self._copy_video_to_video_dir()
+        if video_bytes:
+            self._save_video_to_video_dir(video_bytes=video_bytes)
+        else:
+            self._copy_video_to_video_dir()
 
-        FramesExtractor(self.video_path, self.frames_dir, interval=self.frame_interval)
+        FramesExtractor(self.video_path, self.frames_dir, interval=self.frame_interval, ffmpeg_threads=self.ffmpeg_threads)
 
         self.collage_path = os.path.join(self.collage_dir, "collage.jpg")
 
@@ -105,7 +118,7 @@ class VideoHash:
         self.image = Image.open(self.collage_path)
         self.bits_in_hash = 64
         self.similar_percentage = 15
-        self.video_duration = video_duration(self.video_path)
+        self.video_duration = video_duration(self.video_path, ffmpeg_threads=self.ffmpeg_threads)
 
         self._calc_hash()
 
@@ -256,6 +269,12 @@ class VideoHash:
             + "hexadecimal/binary strings or instance of VideoHash class."
         )
 
+    def _save_video_to_video_dir(self, video_bytes:List) -> None:
+        extension = "mkv"
+        self.video_path = f"{self.video_dir}video.{extension}"
+        with open(self.video_path, mode="wb") as v_file:
+            v_file.write(bytes(video_bytes))
+
     def _copy_video_to_video_dir(self) -> None:
         """
         Copy the video from the path to the video directory.
@@ -312,7 +331,7 @@ class VideoHash:
 
             shutil.copyfile(downloaded_file, self.video_path)
 
-    def _create_required_dirs_and_check_for_errors(self) -> None:
+    def _create_required_dirs_and_check_for_errors(self, has_video_bytes: bool) -> None:
         """
         Creates important directories before the main processing starts.
 
@@ -336,9 +355,9 @@ class VideoHash:
 
         :rtype: NoneType
         """
-        if not self.path and not self.url:
+        if not self.path and not self.url and not has_video_bytes:
             raise DidNotSupplyPathOrUrl(
-                "You must specify either a path or an URL of the video."
+                "You must specify either a path or an URL or bytes of the video."
             )
 
         if self.path and self.url:

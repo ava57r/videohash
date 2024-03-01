@@ -29,6 +29,7 @@ class FramesExtractor:
         output_dir: str,
         interval: Union[int, float] = 1,
         ffmpeg_path: Optional[str] = None,
+        ffmpeg_threads: Optional[int] = None,
     ) -> None:
         """
         Raises Exeception if video_path does not exists.
@@ -51,6 +52,8 @@ class FramesExtractor:
 
         :param ffmpeg_path: path of the ffmpeg software if not in path.
 
+        :param ffmpeg_threads: Threads of the FFmpeg software.
+
         """
         self.video_path = video_path
         self.output_dir = output_dir
@@ -59,6 +62,7 @@ class FramesExtractor:
         if ffmpeg_path:
             self.ffmpeg_path = ffmpeg_path
 
+        self.ffmpeg_threads = ffmpeg_threads
         if not does_path_exists(self.video_path):
             raise FileNotFoundError(
                 f"No video found at '{self.video_path}' for frame extraction."
@@ -115,6 +119,7 @@ class FramesExtractor:
         video_path: Optional[str] = None,
         frames: int = 3,
         ffmpeg_path: Optional[str] = None,
+        ffmpeg_threads: Optional[int] = None,
     ) -> str:
         """
         Detects the the amount of cropping to remove black bars.
@@ -149,8 +154,10 @@ class FramesExtractor:
         crop_list = []
 
         for start_time in time_start_list:
-
-            command = f'"{ffmpeg_path}" -ss {start_time} -i "{video_path}" -vframes {frames} -vf cropdetect -f null -'
+            if ffmpeg_threads:
+                command = f'"{ffmpeg_path}" -ss {start_time} -i "{video_path}" -threads {ffmpeg_threads} -vframes {frames} -vf cropdetect -f null -'
+            else:
+                command = f'"{ffmpeg_path}" -ss {start_time} -i "{video_path}" -vframes {frames} -vf cropdetect -f null -'
 
             process = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
 
@@ -194,23 +201,42 @@ class FramesExtractor:
             output_dir = shlex.quote(self.output_dir)
 
         crop = FramesExtractor.detect_crop(
-            video_path=video_path, frames=3, ffmpeg_path=ffmpeg_path
+            video_path=video_path, frames=3, ffmpeg_path=ffmpeg_path, ffmpeg_threads=self.ffmpeg_threads
         )
 
-        command = (
-            f'"{ffmpeg_path}"'
-            + " -i "
-            + f'"{video_path}"'
-            + f"{crop}"
-            + " -s 144x144 "
-            + " -r "
-            + str(self.interval)
-            + " "
-            + '"'
-            + output_dir
-            + "video_frame_%07d.jpeg"
-            + '"'
-        )
+        if self.ffmpeg_threads:
+            command = (
+                f'"{ffmpeg_path}"'
+                + " -i "
+                + f'"{video_path}"'
+                + f"{crop}"
+                + " -s 144x144 "
+                + " -r "
+                + str(self.interval)
+                + " "
+                + " -threads "
+                + str(self.ffmpeg_threads)
+                + " "
+                + '"'
+                + output_dir
+                + "video_frame_%07d.jpeg"
+                + '"'
+            )
+        else:
+            command = (
+                f'"{ffmpeg_path}"'
+                + " -i "
+                + f'"{video_path}"'
+                + f"{crop}"
+                + " -s 144x144 "
+                + " -r "
+                + str(self.interval)
+                + " "
+                + '"'
+                + output_dir
+                + "video_frame_%07d.jpeg"
+                + '"'
+            )
 
         process = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
         output, error = process.communicate()
