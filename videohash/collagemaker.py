@@ -4,6 +4,8 @@ from typing import List
 
 from PIL import Image
 
+from pkg_resources import parse_version
+
 from .exceptions import CollageOfZeroFramesError
 from .utils import does_path_exists
 
@@ -179,9 +181,14 @@ class MakeCollage:
             frame = Image.open(frame_path)
 
             # scale the opened frame images
-            frame.thumbnail(
-                (scaled_frame_image_width, scaled_frame_image_height), Image.LANCZOS
-            )
+            if parse_version(Image.__version__)>=parse_version('10.0.0'):
+                frame.thumbnail(
+                    (scaled_frame_image_width, scaled_frame_image_height), Image.Resampling.LANCZOS
+                )
+            else:
+                frame.thumbnail(
+                    (scaled_frame_image_width, scaled_frame_image_height), Image.ANTIALIAS
+                )
 
             # set the value of x to that of i's value.
             # i is set to 0 if we are on the first column.
