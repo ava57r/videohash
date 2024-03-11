@@ -120,7 +120,7 @@ class VideoHash:
         self.similar_percentage = 15
         self.video_duration = video_duration(self.video_path, ffmpeg_threads=self.ffmpeg_threads)
 
-        self._calc_hash()
+        # self._calc_hash()
 
     def __str__(self) -> str:
         """
@@ -569,7 +569,7 @@ class VideoHash:
 
         return str(hex(int(binstr, 2)))
 
-    def _calc_hash(self) -> None:
+    def calc_hash(self) -> None:
         """
         Calculates the hash value by calling the whash(wavelet hash) method of
         imagehash package. The wavelet hash of the collage is the videohash for
